@@ -206,25 +206,50 @@ function get_distributor_order_history($distributor_id) {
 
 					$product_price = $wpdb->get_var(
 						$wpdb->prepare("
-							SELECT product_net_revenue
+							SELECT product_gross_revenue
 							FROM {$wpdb->prefix}wc_order_product_lookup
 							WHERE product_id = %d
-							AND order_id = '_regular_price'
+							AND order_id = '%d'
 						", $order_item['product_id'], $order_item['order_id'])
 					);
-
-					$order_history[$order_id]['customer_id'] = $customer_data['customer_id'];
-					$order_history[$order_id]['first_name'] = $customer_data['first_name'];
-					$order_history[$order_id]['last_name'] = $customer_data['last_name'];
-					$order_history[$order_id]['email'] = $customer_data['email'];
-					$order_history[$order_id]['city'] = $customer_data['city'];
-					$order_history[$order_id]['items'][] = array(
-						'order_item_name' => $product_data['order_item_name'],
-						'sku' => $sku,
-						'product_price' => $product_price,
-					);
 					
-			}
+					 $product_qty = $order_item['product_qty'];
+					
+					$attachment_file = $wpdb->get_var(
+                    $wpdb->prepare("
+                        SELECT meta_value
+                        FROM {$wpdb->prefix}postmeta
+                        WHERE post_id = %d
+                        AND meta_key = '_wp_attached_file'
+                    ", $order_item['product_id'])
+                );
+
+ 					$order_stats = $wpdb->get_row(
+                    $wpdb->prepare("
+                        SELECT date_created, date_completed, status
+                        FROM {$wpdb->prefix}wc_order_stats
+                        WHERE order_id = %d
+                    ", $order_id),
+                    ARRAY_A
+                );
+
+                $order_history[$order_id]['customer_id'] = $customer_data['customer_id'];
+                $order_history[$order_id]['first_name'] = $customer_data['first_name'];
+                $order_history[$order_id]['last_name'] = $customer_data['last_name'];
+                $order_history[$order_id]['email'] = $customer_data['email'];
+                $order_history[$order_id]['city'] = $customer_data['city'];
+                $order_history[$order_id]['date_created'] = date('m/d/Y', strtotime($order_stats['date_created']));
+				$order_history[$order_id]['date_completed'] = date('m/d/Y', strtotime($order_stats['date_completed']));
+				$order_history[$order_id]['status'] = str_replace('wc-', '', $order_stats['status']);
+                $order_history[$order_id]['items'][] = array(
+                    'order_item_name' => $product_data['order_item_name'],
+                    'sku' => $sku,
+                    'product_price' => $product_price,
+					'product_qty' => $product_qty,
+					'total_price' => $product_price * $product_qty, // Calculate the total price
+					'attachment_file' => $attachment_file,
+                );
+            }
         }
     }
 
